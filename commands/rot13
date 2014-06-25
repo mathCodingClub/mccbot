@@ -1,0 +1,9 @@
+
+return say "Usage: $_{command} [--double] text"
+    if $_{msg} eq '' or $_{msg} eq '--help';
+
+local $_ = $_{msg};
+tr/A-Za-z/N-ZA-Mn-za-m/ if s/^--double\s*//;
+tr/A-Za-z/N-ZA-Mn-za-m/;
+tr/\0-\x1F//d;
+reply $_;

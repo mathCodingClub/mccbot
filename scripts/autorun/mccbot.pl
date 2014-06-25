@@ -1,0 +1,1 @@
+/home/acce/.mccbot/scripts/mccbot.pl

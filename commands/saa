@@ -1,0 +1,15 @@
+use Weather::Underground;
+
+my $weather = Weather::Underground->new(
+    place => "Tampere, Finland",
+    debug => 0,
+  )
+  || return "Error, could not create new weather object: $@\n";
+
+my $arrayref = $weather->get_weather()
+  || return "Error, calling get_weather() failed: $@\n";
+
+my %hash = %{@$arrayref[0]};
+
+say "T: " . $hash{"celsius"} . " C, Tuulennopeus: " . $hash{"wind_kilometersperhour"}/3.6 . " m/s, " .
+    "Suunta: " . $hash{"wind_direction"} . ", Suht.kosteus: " . $hash{"humidity"} . " %";

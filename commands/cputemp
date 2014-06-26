@@ -2,4 +2,4 @@ my $output = `sensors | grep "Core 0"`;
 
 local $_ = $output;
 
-reply_all( $_ );
+say( $_ );

@@ -1,5 +1,5 @@
 use Irssi;
-use lib 'module';
+use lib 'modules';
 use strict;
 
 our %global;
@@ -14,7 +14,6 @@ my $charre = quotemeta $char;
 my $commands = 'commands';
 
 sub reply { $_{server}->command("msg $_{target} $_{nick}: $_") for @_ }
-sub reply_all { $_{server}->command("msg $_{target} $_") for @_ }
 sub say   { $_{server}->command("msg $_{target} $_") for @_ }
 sub match { $_{server}->masks_match("@_", $_{nick}, $_{address}) }
 

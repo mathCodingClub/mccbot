@@ -1,0 +1,19 @@
+my $page = $_{msg};
+
+return say("Not a valid page. Usage: !tekstitv [0-999]") if (($page == '') 
+			      ||($page+0 ne $page)
+			      ||($page < 0 || $page > 999 ));
+
+my $text = `php5 scripts/txt.php page=$page`;
+
+return say("Page " . $page . " does not exist") if ($text == 410);
+
+my @lines = split(/\n/, $text);
+
+use Time::HiRes qw(usleep);
+
+foreach(@lines)
+{
+  reply_private($_);
+  usleep(250000);
+}

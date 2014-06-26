@@ -11,5 +11,5 @@ my $arrayref = $weather->get_weather()
 
 my %hash = %{@$arrayref[0]};
 
-say "T: " . $hash{"celsius"} . " C, Tuulennopeus: " . $hash{"wind_kilometersperhour"}/3.6 . " m/s, " .
-    "Suunta: " . $hash{"wind_direction"} . ", Suht.kosteus: " . $hash{"humidity"} . " %";
+say ("T: " . $hash{"celsius"} . " C, Tuulennopeus: " . $hash{"wind_kilometersperhour"}/3.6 . " m/s, " .
+    "Suunta: " . $hash{"wind_direction"} . ", Suht.kosteus: " . $hash{"humidity"} . " %");

@@ -1,7 +1,7 @@
 my @params = split(" ", $_{msg});
 my $param_count = @params;
 
-my @buffer = reverse(@msg_buffer);
+my @buffer = reverse(@{$msg_buffer{$_{target}}});
 
 if($param_count > 1 )
 {

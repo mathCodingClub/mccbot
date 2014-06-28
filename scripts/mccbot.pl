@@ -3,7 +3,7 @@ use lib 'modules';
 use strict;
 
 our %global;
-our @msg_buffer;
+our %msg_buffer;
 
 sub clean_eval {
     return eval shift;
@@ -93,13 +93,18 @@ sub try_rest
 
 sub push_to_buffer
 {
-  my ($msg, $nick) = @_;
+  my ($msg, $nick, $target) = @_;
 
-  if(scalar @msg_buffer > 15)
+  if(not defined @{$msg_buffer{$target}})
   {
-    shift @msg_buffer;
+    @{$msg_buffer{$target}} = [];
   }
-  push(@msg_buffer, "{\"user\":\"$nick\",\"quote\":\"$msg\"}");
+
+  if(scalar @{$msg_buffer{$target}} > 15)
+  {
+    shift @{$msg_buffer{$target}};
+  }
+  push(@{$msg_buffer{$target}}, "{\"user\":\"$nick\",\"quote\":\"$msg\"}");
 }
 
 our $last_msg = "";
@@ -111,9 +116,9 @@ sub message {
     {
       $last_msg = $msg;
 
-      if( ($nick ne "mccbot") && (not $last_msg =~ m/^$charre(\w+)(?:$| )/))
+      if( ($nick ne "mccbot") && (not $last_msg =~ m/^$charre(\w+)(?:$| )/) && $target ne $nick)
       {
-        push_to_buffer($last_msg, $nick);
+        push_to_buffer($last_msg, $nick, $target);
       }
       
     }

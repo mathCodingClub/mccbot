@@ -1,0 +1,29 @@
+my @params = split(" ", $_{msg});
+my $param_count = @params;
+
+my @buffer = reverse(@msg_buffer);
+
+if($param_count > 1 )
+{
+  foreach(@buffer)
+  {
+    if($_ =~ /\"user\":\"$params[1]\"/)
+    {
+      Irssi::print $_;
+      `curl -X POST -d \'$_\' http://rest.localhost/quote`;
+      reply( "Got'cha!" );
+      return;
+    } 
+  }
+}
+else
+{
+Irssi::print $buffer[0];
+`curl -X POST -d \'$buffer[0]\' http://rest.localhost/quote`;
+reply( "Got'cha!" );
+return;
+}
+
+reply( "No message to grab!" );
+
+

@@ -3,6 +3,7 @@ use lib 'modules';
 use strict;
 
 our %global;
+our @msg_buffer;
 
 sub clean_eval {
     return eval shift;
@@ -90,14 +91,40 @@ sub try_rest
 
 }
 
+sub push_to_buffer
+{
+  my ($msg, $nick) = @_;
+
+  if(scalar @msg_buffer > 15)
+  {
+    shift @msg_buffer;
+  }
+  push(@msg_buffer, "{\"user\":\"$nick\",\"quote\":\"$msg\"}");
+}
+
+our $last_msg = "";
+
 sub message {
     my ($server, $msg, $nick, $address, $target) = @_;
-    return unless $msg =~ s/^$charre(\w+)(?:$| )//;
+
+    if($last_msg eq "")
+    {
+      $last_msg = $msg;
+
+      if( ($nick ne "mccbot") && (not $last_msg =~ m/^$charre(\w+)(?:$| )/))
+      {
+        push_to_buffer($last_msg, $nick);
+      }
+      
+    }
+
+    return $last_msg = "" unless $msg =~ s/^$charre(\w+)(?:$| )//;
     my $command = $1;
  
     my $code = load($command);
     if (not ref $code)
     {
+        $last_msg = "";
 	my $rest_success = try_rest($server, $command, $msg, $nick, $target);
 	return $server->command("msg $target $nick: I don't know that command!") if not $rest_success;
     }
@@ -106,8 +133,6 @@ sub message {
       $_[1] = "\cO" . $_[1];
       Irssi::signal_emit($target ? 'message public' : 'message private', @_);
 
-      Irssi::print $code;
-    
       $target ||= $nick;
       eval {
         $code->( {
@@ -125,6 +150,7 @@ sub message {
 
     Irssi::print $@ if $@;
     Irssi::signal_stop;
+    $last_msg = "";
 }
 
 Irssi::signal_add_last 'message public' => \&message;

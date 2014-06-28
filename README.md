@@ -11,7 +11,7 @@ clone into your favourite directory (mine was ~/.mccbot) and start irssi:
 
 irssi --path~=/path/to/clone
 
-That's it.
+Then edit the config to fit your channel and server needs and that's it.
 
 you can write new commands using perl by creating file commands/commandname
 check mccbot.pl for functions you can use to respond.

@@ -38,10 +38,56 @@ sub load {
         }
         return $global{filecache}{$command}{code};
     }
+
     Irssi::print "Could not load $command";
-    $server->command("msg $target $nick: I don't know that command!");
     delete $global{filecache}{$command} if exists $global{filecache}{$command};
     return undef;
+}
+
+sub try_rest
+{
+    my ($server, $command, $msg, $nick, $target) = @_;
+
+    my $rest = "http://rest.localhost";
+
+    my @params = split(/ /, $msg);
+
+    my $path = $rest . "/" . $command;
+
+    foreach(@params)
+    {
+      $path .= "/" . $_;
+    } 
+
+    Irssi::print $path;
+
+    my $gotinfo = `curl $path`;
+
+    if(index($gotinfo, "404 Page Not Found") != -1)
+    {
+      return 0; #command not found in rest either
+    }
+    else
+    {
+      my $code = eval join "\n",
+        'sub {',
+          'local %_ = %{ +shift @_ };',
+          'my @lines = split(/\n/, $gotinfo);',
+          'foreach(@lines)',
+          '{',
+            'say($_);',
+          '}',
+        '}';
+
+      eval {
+        $code->( {
+            server => $server,
+            target => $target
+        });
+      };
+      return 1;
+    }
+
 }
 
 sub message {
@@ -49,16 +95,21 @@ sub message {
     return unless $msg =~ s/^$charre(\w+)(?:$| )//;
     my $command = $1;
  
-    my $code = load($command, $server, $nick, $target);
-    return if not ref $code;
-    Irssi::print "$command by $nick${\ ($target ? qq/ in $target/ : '') } on " .
-                 "$server->{address}";
+    my $code = load($command);
+    if (not ref $code)
+    {
+	my $rest_success = try_rest($server, $command, $msg, $nick, $target);
+	return $server->command("msg $target $nick: I don't know that command!") if not $rest_success;
+    }
+    else
+    {    
+      $_[1] = "\cO" . $_[1];
+      Irssi::signal_emit($target ? 'message public' : 'message private', @_);
+
+      Irssi::print $code;
     
-    $_[1] = "\cO" . $_[1];
-    Irssi::signal_emit($target ? 'message public' : 'message private', @_);
-    
-    $target ||= $nick;
-    eval {
+      $target ||= $nick;
+      eval {
         $code->( {
             command => "$char$command",
             server  => $server,
@@ -67,7 +118,11 @@ sub message {
             address => $address,
             target  => $target
         } );
-    };
+      };
+    }
+    Irssi::print "$command by $nick${\ ($target ? qq/ in $target/ : '') } on " .
+                 "$server->{address}";
+
     Irssi::print $@ if $@;
     Irssi::signal_stop;
 }

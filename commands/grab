@@ -1,13 +1,18 @@
 my @params = split(" ", $_{msg});
-my $param_count = @params;
+my $param_count = scalar @params;
 
 my @buffer = reverse(@{$msg_buffer{$_{target}}});
 
-if($param_count > 1 )
+Irssi::print $_{msg};
+Irssi::print $param_count;
+Irssi::print @params;
+Irssi::print $params[0];
+
+if($param_count > 0 )
 {
   foreach(@buffer)
   {
-    if($_ =~ /\"user\":\"$params[1]\"/)
+    if($_ =~ /\"user\":\"$params[0]\"/)
     {
       Irssi::print $_;
       `curl -X POST -d \'$_\' http://rest.localhost/quote`;

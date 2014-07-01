@@ -15,7 +15,7 @@ if($param_count > 0 )
     if($_ =~ /\"user\":\"$params[0]\"/)
     {
       Irssi::print $_;
-      `curl -X POST -d \'$_\' http://rest.localhost/quote`;
+      `curl -s -X POST -d \'$_\' http://rest.localhost/quote`;
       reply( "Got'cha!" );
       return;
     } 
@@ -24,7 +24,7 @@ if($param_count > 0 )
 else
 {
 Irssi::print $buffer[0];
-`curl -X POST -d \'$buffer[0]\' http://rest.localhost/quote`;
+`curl -s -X POST -d \'$buffer[0]\' http://rest.localhost/quote`;
 reply( "Got'cha!" );
 return;
 }

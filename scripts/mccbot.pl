@@ -1,5 +1,7 @@
 use Irssi;
 use lib 'modules';
+
+use URI::Escape;
 use strict;
 
 our %global;
@@ -51,18 +53,15 @@ sub try_rest
 
     my $rest = "http://rest.localhost";
 
-    my @params = split(/ /, $msg);
+    $msg =~ s/(\".*?\")/uri_escape($1)/ge;
 
-    my $path = $rest . "/" . $command;
+    my $path = $rest . "/" . $command . "/" . $msg;
 
-    foreach(@params)
-    {
-      $path .= "/" . $_;
-    } 
+    $path =~ s/ /\//g;
 
     Irssi::print $path;
 
-    my $gotinfo = `curl $path`;
+    my $gotinfo = `curl -s $path`;
 
     if(index($gotinfo, "404 Page Not Found") != -1)
     {

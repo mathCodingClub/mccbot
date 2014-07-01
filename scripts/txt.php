@@ -4,7 +4,7 @@
 parse_str(implode('&', array_slice($argv, 1)), $_GET);
 
 
-require_once '/home/stenvala/Dropbox/Antti_htdocs/mccRest/models/tekstari/tekstari.php';
+require_once '/var/repos/tekstari/tekstari.php';
 
 $response = "";
 

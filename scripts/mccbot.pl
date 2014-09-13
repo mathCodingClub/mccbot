@@ -2,10 +2,21 @@ use Irssi;
 use lib 'modules';
 
 use URI::Escape;
+use URI::Find;
+
 use strict;
 
 our %global;
 our %msg_buffer;
+
+Irssi::print(`pwd`);
+
+our @uris;
+our $finder = URI::Find->new(sub
+{
+  my($uri) = shift;
+  push @uris, $uri;  
+});
 
 sub clean_eval {
     return eval shift;
@@ -15,6 +26,7 @@ my $char   = '!';
 my $charre = quotemeta $char;
 
 my $commands = 'commands';
+my $irssi_config = '/home/acce/.mccbot';
 
 sub reply { $_{server}->command("msg $_{target} $_{nick}: $_") for @_ }
 sub say   { $_{server}->command("msg $_{target} $_") for @_ }
@@ -23,11 +35,11 @@ sub match { $_{server}->masks_match("@_", $_{nick}, $_{address}) }
 
 sub load {
           my ($command, $server, $nick, $target) = @_;
-    my $mtime =  (stat "$commands/$command")[9];
+    my $mtime =  (stat "$irssi_config/$commands/$command")[9];
     if ($mtime) {
         if ($mtime > $global{filecache}{$command}{mtime}) {
             local $/ = undef;
-            open my $fh, "$commands/$command"; # no die
+            open my $fh, "$irssi_config/$commands/$command"; # no die
             $global{filecache}{$command} = {
                 mtime => $mtime,
                 code  => clean_eval join "\n", 
@@ -53,15 +65,57 @@ sub try_rest
 
     my $rest = "http://rest.localhost";
 
-    $msg =~ s/(\".*?\")/uri_escape($1)/ge;
+    my $method = "GET";
+    my $data = "";
 
-    my $path = $rest . "/" . $command . "/" . $msg;
+    if($msg =~ s/^://)
+    {
+      $method = uc($command);
+      if(not $method =~ m/POST|GET|OPTIONS|DELETE|PUT/)
+      {
+	$server->command("msg $target $nick: Invalid HTTP method!");
+        return 0;
+      }
+      else
+      {
+        $command = "";
 
-    $path =~ s/ /\//g;
 
-    Irssi::print $path;
+        if($method eq "POST")
+        {
+          $msg =~ s/(\{.*?\})//;
+          my $d = $1;
+          if($d eq "")
+          {
+            $server->command("msg $target $nick: No post data given! Use wave brackets to enclose data, the brackets are included to the data (eg. !post:command pathparam {postdata})");
+            return 0;
+          }
+          else
+          {
+            $msg =~ s/^\s+|\s+$//g;
+            $data = "-d \'$d\'";
+          }
+        }
+      }
+    }
 
-    my $gotinfo = `curl -s $path`;
+    $command =~ s/^\s+|\s+$//g;
+    $msg =~ s/\"(.*?)\"/uri_escape($1)/ge;
+    my $path = $rest . "/" . $command;
+    if($msg ne "")
+    {
+     $path .= "/" . $msg;   
+   
+     $path =~ s/^\s+|\s+$//g;
+     $path =~ s/\s/\//g;
+     $path =~ s/\/$/\//g;
+
+    }
+
+
+    Irssi::print "method: " . $method . ", path: " . $path . ", data: " . $data;
+
+    my $gotinfo = `curl -s -X $method $data $path`;
 
     if(index($gotinfo, "404 Page Not Found") != -1)
     {
@@ -73,15 +127,23 @@ sub try_rest
         'sub {',
           'local %_ = %{ +shift @_ };',
           'my @lines = split(/\n/, $gotinfo);',
+          'my $sender = \&say;',
+          'if(scalar @lines > 4)',
+          '{',
+          '$sender = \&reply_private;',
+          '',
+          '}',
           'foreach(@lines)',
           '{',
-            'say($_);',
+            '$sender->($_);',
           '}',
         '}';
 
+      $target ||= $nick;
       eval {
         $code->( {
             server => $server,
+            nick => $nick,
             target => $target
         });
       };
@@ -103,13 +165,36 @@ sub push_to_buffer
   {
     shift @{$msg_buffer{$target}};
   }
+  $msg =~ s/"/\\"/g;
   push(@{$msg_buffer{$target}}, "{\"user\":\"$nick\",\"quote\":\"$msg\"}");
+}
+
+sub send_titles_for_url
+{
+  my ($server, $msg, $nick, $target) = @_;
+
+  $finder->find(\$msg);
+
+  foreach(@uris)
+  {
+    my $title = `curl -s $_`;
+    $title =~ s/.*?<title>(.*?)<\/title>.*?//;
+    if( $1 ne "")
+    {
+      $server->command("msg $target Title - $1");
+    }
+  }
+
+  @uris=();
+
 }
 
 our $last_msg = "";
 
 sub message {
     my ($server, $msg, $nick, $address, $target) = @_;
+
+    send_titles_for_url($server, $msg, $nick, $target);
 
     if($last_msg eq "")
     {
@@ -122,7 +207,7 @@ sub message {
       
     }
 
-    return $last_msg = "" unless $msg =~ s/^$charre(\w+)(?:$| )//;
+    return $last_msg = "" unless $msg =~ s/^$charre(\w+)\s*//;
     my $command = $1;
  
     my $code = load($command);
@@ -134,11 +219,10 @@ sub message {
     }
     else
     {    
-      $_[1] = "\cO" . $_[1];
-      Irssi::signal_emit($target ? 'message public' : 'message private', @_);
 
-      $target ||= $nick;
+
       eval {
+
         $code->( {
             command => "$char$command",
             server  => $server,
@@ -147,10 +231,16 @@ sub message {
             address => $address,
             target  => $target
         } );
+
       };
     }
     Irssi::print "$command by $nick${\ ($target ? qq/ in $target/ : '') } on " .
                  "$server->{address}";
+
+    $_[1] = "\cO" . $_[1];
+    $target ||= $nick;
+
+    Irssi::signal_emit($target ? 'message public' : 'message private', @_);
 
     Irssi::print $@ if $@;
     Irssi::signal_stop;
